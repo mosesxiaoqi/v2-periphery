@@ -50,9 +50,9 @@ contract ExampleFlashSwap is IUniswapV2Callee {
             assert(msg.sender == UniswapV2Library.pairFor(factory, token0, token1)); // ensure that msg.sender is actually a V2 pair
             // 这是一个单向的策略，只支持借入一种代币的闪电交换
             assert(amount0 == 0 || amount1 == 0); // this strategy is unidirectional
-            // 如果 `amount0 == 0`，则借入的是 token1，路径是 token1 → token0
+            // 如果 `amount0 == 0`，则借入的是 token1，路径是 token0 → token1
             path[0] = amount0 == 0 ? token0 : token1;
-            // 如果 `amount1 == 0`，则借入的是 token0，路径是 token0 → token1
+            // 如果 `amount1 == 0`，则借入的是 token0，路径是 token1 → token0
             path[1] = amount0 == 0 ? token1 : token0;
             amountToken = token0 == address(WETH) ? amount1 : amount0;
             amountETH = token0 == address(WETH) ? amount0 : amount1;

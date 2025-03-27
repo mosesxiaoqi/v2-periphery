@@ -2,33 +2,50 @@ pragma solidity >=0.5.0;
 
 import '@uniswap/v2-core/contracts/interfaces/IUniswapV2Pair.sol';
 
-import "./SafeMath.sol";
+import './SafeMath.sol';
 
 library UniswapV2Library {
     using SafeMath for uint;
 
     // returns sorted token addresses, used to handle return values from pairs sorted in this order
     function sortTokens(address tokenA, address tokenB) internal pure returns (address token0, address token1) {
+        // 判断两个token地址是否相同
         require(tokenA != tokenB, 'UniswapV2Library: IDENTICAL_ADDRESSES');
+        // 比较两个token地址的大小，小的地址作为token0，大的地址作为token1
         (token0, token1) = tokenA < tokenB ? (tokenA, tokenB) : (tokenB, tokenA);
+        // 判断token0是否为0地址
+        // token0小于token1，如果token0不为0地址，则两个token地址都不为0地址
         require(token0 != address(0), 'UniswapV2Library: ZERO_ADDRESS');
     }
 
     // calculates the CREATE2 address for a pair without making any external calls
     function pairFor(address factory, address tokenA, address tokenB) internal pure returns (address pair) {
         (address token0, address token1) = sortTokens(tokenA, tokenB);
-        pair = address(uint(keccak256(abi.encodePacked(
-                hex'ff',
-                factory,
-                keccak256(abi.encodePacked(token0, token1)),
-                hex'96e8ac4277198ff8b6f785478aa9a39f403cb768dd02cbee326c3e7da348845f' // init code hash
-            ))));
+        pair = address(
+            uint(
+                keccak256(
+                    abi.encodePacked(
+                        hex'ff',
+                        factory,
+                        keccak256(abi.encodePacked(token0, token1)),
+                        hex'96e8ac4277198ff8b6f785478aa9a39f403cb768dd02cbee326c3e7da348845f' // init code hash
+                    )
+                )
+            )
+        );
     }
 
     // fetches and sorts the reserves for a pair
-    function getReserves(address factory, address tokenA, address tokenB) internal view returns (uint reserveA, uint reserveB) {
-        (address token0,) = sortTokens(tokenA, tokenB);
-        (uint reserve0, uint reserve1,) = IUniswapV2Pair(pairFor(factory, tokenA, tokenB)).getReserves();
+    // 获取 Uniswap V2 交易对中两个代币的当前储备量（reserves）
+    function getReserves(
+        address factory, // Uniswap V2 工厂合约的地址
+        address tokenA,
+        address tokenB
+    ) internal view returns (uint reserveA, uint reserveB) {
+        (address token0, ) = sortTokens(tokenA, tokenB);
+        // 使用 `pairFor` 函数计算代币对的交易对合约地址
+        // 调用交易对的 `getReserves()` 函数获取当前储备量
+        (uint reserve0, uint reserve1, ) = IUniswapV2Pair(pairFor(factory, tokenA, tokenB)).getReserves();
         (reserveA, reserveB) = tokenA == token0 ? (reserve0, reserve1) : (reserve1, reserve0);
     }
 
@@ -59,7 +76,11 @@ library UniswapV2Library {
     }
 
     // performs chained getAmountOut calculations on any number of pairs
-    function getAmountsOut(address factory, uint amountIn, address[] memory path) internal view returns (uint[] memory amounts) {
+    function getAmountsOut(
+        address factory,
+        uint amountIn,
+        address[] memory path
+    ) internal view returns (uint[] memory amounts) {
         require(path.length >= 2, 'UniswapV2Library: INVALID_PATH');
         amounts = new uint[](path.length);
         amounts[0] = amountIn;
@@ -70,11 +91,21 @@ library UniswapV2Library {
     }
 
     // performs chained getAmountIn calculations on any number of pairs
-    function getAmountsIn(address factory, uint amountOut, address[] memory path) internal view returns (uint[] memory amounts) {
+    function getAmountsIn(
+        address factory,
+        uint amountOut,
+        address[] memory path
+    ) internal view returns (uint[] memory amounts) {
+        // path数组是交易路径，表达path[0] → path[1] → ... → path[path.length - 1]
+        // path数组的长度至少为2
         require(path.length >= 2, 'UniswapV2Library: INVALID_PATH');
+        // 创建一个长度为path.length的数组
         amounts = new uint[](path.length);
+        // 最后一个元素的值为amountOut
+        // 表示交易路径中最后一个代币是要借入的代币，amountOut是借入的数量
         amounts[amounts.length - 1] = amountOut;
         for (uint i = path.length - 1; i > 0; i--) {
+            // 获取交易对中两个代币的当前储备量
             (uint reserveIn, uint reserveOut) = getReserves(factory, path[i - 1], path[i]);
             amounts[i - 1] = getAmountIn(amounts[i], reserveIn, reserveOut);
         }
